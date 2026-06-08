@@ -19,7 +19,7 @@ class RunningTab:
     def list_running(self):
         def task():
             out = run_command([ADB, "shell", "ps -A | grep u0_a"])
-            self.render_running(out.splitlines())
+            self.tab.after(0, lambda: self.render_running(out.splitlines()))
         threading.Thread(target=task, daemon=True).start()
 
     def render_running(self, lines):
@@ -37,4 +37,5 @@ class RunningTab:
                          command=lambda p=pkg: self.kill_app(p)).pack(side="right", padx=5)
 
     def kill_app(self, pkg):
-        threading.Thread(target=lambda: (run_command([ADB, "shell", f"am force-stop {pkg}"]), self.list_running())).start()
+        run_command([ADB, "shell", f"am force-stop {pkg}"])
+        self.list_running()

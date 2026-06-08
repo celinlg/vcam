@@ -1,2 +1,1 @@
 customtkinter>=5.0.0
-pynput>=1.7.6

@@ -2,17 +2,14 @@
 import customtkinter as ctk
 
 ADB = "adb"
-SCRCPY_PATH = r"C:\scrcpy.exe"  # Ajuste se o nome do .exe for diferente
+SCRCPY_PATH = r"C:\scrcpy.exe"
 
-# Tema
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-# Dimensões da janela
-WINDOW_WIDTH = 1300
+WINDOW_WIDTH = 1350
 WINDOW_HEIGHT = 900
 
-# Cores
 COLOR_DIRECTORY = "#3498db"
 COLOR_FILE = "#ecf0f1"
 COLOR_SUCCESS = "#27ae60"

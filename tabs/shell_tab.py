@@ -3,9 +3,8 @@ import threading
 from utils import run_command, ADB
 
 class ShellTab:
-    def __init__(self, parent, after_func):
+    def __init__(self, parent):
         self.tab = parent
-        self.after_func = after_func
         self.setup_shell_tab()
 
     def setup_shell_tab(self):
@@ -19,7 +18,4 @@ class ShellTab:
     def exec_shell(self):
         cmd = self.shell_entry.get()
         self.shell_entry.delete(0, "end")
-        def task():
-            result = run_command([ADB] + cmd.split())
-            self.after_func(0, lambda: self.shell_out.insert("end", f"\n# adb {cmd}\n" + result))
-        threading.Thread(target=task).start()
+        threading.Thread(target=lambda: self.tab.after(0, lambda: self.shell_out.insert("end", f"\n# adb {cmd}\n" + run_command([ADB] + cmd.split())))).start()

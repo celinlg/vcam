@@ -1,146 +1,101 @@
 import customtkinter as ctk
 import threading
 import os
-import time
 from tkinter import messagebox
-from pynput import mouse
 
-from config import (
-    ADB, SCRCPY_PATH, WINDOW_WIDTH, WINDOW_HEIGHT,
-    COLOR_PURPLE, COLOR_DANGER, COLOR_SUCCESS, COLOR_WARNING, COLOR_INFO
-)
+from config import ADB, SCRCPY_PATH, WINDOW_WIDTH, WINDOW_HEIGHT
 from utils import run_command
 from tabs.explorer_tab import ExplorerTab
 from tabs.shell_tab import ShellTab
 from tabs.apps_tab import AppsTab
 from tabs.running_tab import RunningTab
 from tabs.manage_tab import ManageTab
-from tabs.perms_tab import PermsTab
 from tabs.monitor_tab import MonitorTab
-from tabs.auto_tab import AutoTab
+from tabs.dsu_tab import DSUTab
 
 
 class TitanUltraFinal(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("🔥 TITAN ADB PRO ULTRA - FINAL EDITION 🔥")
+        self.title("🔥 TITAN ADB PRO ULTRA - V5 🔥")
         self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
 
         self.app_cache = []
-        self.control_enabled = False
+        self.explorer_path = "/sdcard"
 
         self.create_top_bar()
         self.create_ui()
-        self.start_mouse_listener()
         threading.Thread(target=self.load_apps, daemon=True).start()
+        threading.Thread(target=self.explorer_tab.explorer_refresh, daemon=True).start()
 
     def create_top_bar(self):
-        conn_frame = ctk.CTkFrame(self, height=60)
+        conn_frame = ctk.CTkFrame(self, height=70)
         conn_frame.pack(fill="x", padx=10, pady=5)
         
-        self.ip_entry = ctk.CTkEntry(conn_frame, placeholder_text="IP: 192.168.x.x", width=150)
+        self.ip_entry = ctk.CTkEntry(conn_frame, placeholder_text="IP:Porta", width=140)
         self.ip_entry.pack(side="left", padx=5)
+        ctk.CTkButton(conn_frame, text="Conectar", width=80, command=self.connect_wifi).pack(side="left", padx=2)
         
-        self.port_entry = ctk.CTkEntry(conn_frame, placeholder_text="5555", width=60)
-        self.port_entry.insert(0, "5555")
-        self.port_entry.pack(side="left", padx=5)
+        ctk.CTkLabel(conn_frame, text="USUÁRIO:").pack(side="left", padx=(20, 5))
+        self.user_selector = ctk.CTkComboBox(conn_frame, values=["0", "10", "11", "999"], width=70)
+        self.user_selector.set("0")
+        self.user_selector.pack(side="left", padx=5)
         
-        ctk.CTkButton(conn_frame, text="Conectar", width=80, command=self.connect_wifi).pack(side="left", padx=5)
-        ctk.CTkButton(conn_frame, text="ADB USB", fg_color=COLOR_SUCCESS, width=80, command=self.set_adb_usb).pack(side="left", padx=5)
-        ctk.CTkButton(conn_frame, text="📱 ESPELHAR", fg_color=COLOR_PURPLE, command=self.start_mirror).pack(side="left", padx=5)
-        ctk.CTkButton(conn_frame, text="📸 PRINT", fg_color=COLOR_INFO, command=self.take_screenshot).pack(side="left", padx=5)
+        ctk.CTkButton(conn_frame, text="📱 ESPELHAR (LOW LATENCY)", fg_color="#8e44ad", command=self.start_mirror).pack(side="left", padx=5)
         
-        self.status_label = ctk.CTkLabel(conn_frame, text="Status: Desconectado", text_color="gray")
+        self.status_label = ctk.CTkLabel(conn_frame, text="Status: Pronto", text_color="gray")
         self.status_label.pack(side="right", padx=15)
 
     def connect_wifi(self):
-        target = f"{self.ip_entry.get().strip()}:{self.port_entry.get().strip()}"
-        threading.Thread(
-            target=lambda: self.status_label.configure(
-                text=f"Status: {run_command([ADB, 'connect', target]).strip()}"
-            )
-        ).start()
-
-    def set_adb_usb(self):
-        threading.Thread(
-            target=lambda: messagebox.showinfo("USB", run_command([ADB, "usb"]))
-        ).start()
+        t = self.ip_entry.get().strip()
+        self.status_label.configure(text="Conectando...", text_color="yellow")
+        threading.Thread(target=lambda: self.status_label.configure(text=f"Status: {run_command([ADB, 'connect', t]).strip()}")).start()
 
     def create_ui(self):
-        self.tabs = ctk.CTkTabview(self, command=self.on_tab_change)
+        self.tabs = ctk.CTkTabview(self)
         self.tabs.pack(fill="both", expand=True, padx=10, pady=5)
         
-        self.tab_explorer = self.tabs.add("📂 Explorer")
-        self.tab_shell = self.tabs.add("💻 ADB Shell")
-        self.tab_apps = self.tabs.add("🚀 App Launcher")
-        self.tab_running = self.tabs.add("🏃 Apps Rodando")
-        self.tab_manage = self.tabs.add("📦 Instalar/Desinstalar")
-        self.tab_perms = self.tabs.add("🔐 Permissões")
-        self.tab_monitor = self.tabs.add("📊 Monitor")
-        self.tab_auto = self.tabs.add("⚡ Automação")
+        tab_explorer = self.tabs.add("📂 Explorer")
+        tab_running = self.tabs.add("🏃 Apps Rodando")
+        tab_apps = self.tabs.add("🚀 App Launcher")
+        tab_manage = self.tabs.add("📦 Gerenciar")
+        tab_monitor = self.tabs.add("📊 Monitor")
+        tab_dsu = self.tabs.add(⚡ DSU Manager")
+        tab_shell = self.tabs.add("💻 ADB Shell")
 
-        self.explorer_tab = ExplorerTab(self.tab_explorer)
-        self.shell_tab = ShellTab(self.tab_shell, self.after)
-        self.apps_tab = AppsTab(self.tab_apps, self.app_cache)
-        self.running_tab = RunningTab(self.tab_running)
-        self.manage_tab = ManageTab(self.tab_manage, self.app_cache)
-        self.perms_tab = PermsTab(self.tab_perms, self.app_cache)
-        self.monitor_tab = MonitorTab(self.tab_monitor)
-        self.auto_tab = AutoTab(self.tab_auto)
+        self.explorer_tab = ExplorerTab(tab_explorer, self.update_status)
+        self.running_tab = RunningTab(tab_running)
+        self.apps_tab = AppsTab(tab_apps, self.app_cache, self.user_selector)
+        self.manage_tab = ManageTab(tab_manage, self.app_cache, self.user_selector, self.load_apps)
+        self.manage_tab.set_status_callback(self.status_label)
+        self.monitor_tab = MonitorTab(tab_monitor)
+        self.dsu_tab = DSUTab(tab_dsu)
+        self.shell_tab = ShellTab(tab_shell)
 
-        self.ctrl_btn = ctk.CTkButton(self, text="🎮 CONTROLE REMOTO OFF", command=self.toggle_control)
-        self.ctrl_btn.pack(pady=10)
-
-    def on_tab_change(self):
-        current_tab = self.tabs.get()
-        if current_tab in ["🚀 App Launcher", "🔐 Permissões", "📦 Instalar/Desinstalar"] and not self.app_cache:
-            self.load_apps()
+    def update_status(self, text, color="gray"):
+        self.status_label.configure(text=f"Status: {text}", text_color=color)
 
     def load_apps(self):
+        u = self.user_selector.get()
+        self.status_label.configure(text=f"Lendo apps do usuário {u}...", text_color="yellow")
+        
         def task():
-            out = run_command([ADB, "shell", "pm list packages --user 0"])
-            self.app_cache = sorted([p.replace("package:", "").strip() for p in out.splitlines() if "package:" in p])
-            self.after(0, lambda: self.update_all_app_tabs())
+            out = run_command([ADB, "shell", "pm", "list", "packages", "--user", u, "-3"])
+            self.app_cache = sorted([line.replace("package:", "").strip() for line in out.splitlines() if line.strip()])
+            
+            self.after(0, lambda: [
+                self.apps_tab.render_app_list(),
+                self.manage_tab.render_manage_list(),
+                self.status_label.configure(text="Apps Sincronizados", text_color="green")
+            ])
         threading.Thread(target=task, daemon=True).start()
-
-    def update_all_app_tabs(self):
-        self.apps_tab.render_apps(self.app_cache)
-        self.perms_tab.render_perms_list(self.app_cache)
-        self.manage_tab.update_list()
 
     def start_mirror(self):
         if os.path.exists(SCRCPY_PATH):
-            threading.Thread(target=lambda: run_command([SCRCPY_PATH, "--always-on-top"]), daemon=True).start()
+            threading.Thread(target=lambda: run_command([SCRCPY_PATH, "--max-size=800", "--video-bit-rate=2M", "--max-fps=15", "--no-audio", "-S"]), daemon=True).start()
         else:
             messagebox.showerror("Erro", f"Scrcpy não encontrado em: {SCRCPY_PATH}")
 
-    def take_screenshot(self):
-        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        filepath = os.path.join(desktop, f"shot_{int(time.time())}.png")
-        
-        def screenshot_task():
-            run_command([ADB, "shell", "screencap -p /sdcard/s.png"])
-            run_command([ADB, "pull", "/sdcard/s.png", filepath])
-            messagebox.showinfo("Sucesso", f"Salvo no Desktop: {filepath}")
-        
-        threading.Thread(target=screenshot_task).start()
-
-    def toggle_control(self):
-        self.control_enabled = not self.control_enabled
-        text = "🎮 CONTROLE ON" if self.control_enabled else "🎮 CONTROLE OFF"
-        color = "red" if self.control_enabled else "#3b8ed0"
-        self.ctrl_btn.configure(text=text, fg_color=color)
-
-    def start_mouse_listener(self):
-        def on_click(x, y, button, pressed):
-            if pressed and self.control_enabled:
-                threading.Thread(
-                    target=lambda: run_command([ADB, "shell", "input", "tap", str(int(x)), str(int(y))])
-                ).start()
-        
-        mouse.Listener(on_click=on_click).start()
-
 
 if __name__ == "__main__":
-    app = TitanUltraFinal()
-    app.mainloop()
+    TitanUltraFinal().mainloop()
